@@ -1,0 +1,29 @@
+Name:                json-builder
+Version:             0.0
+Synopsis:            Data structure agnostic JSON serialization
+License:             BSD3
+License-file:        LICENSE
+Author:              Leon P Smith
+Maintainer:          leon@melding-monads.com
+Copyright:           (c) 2011 Leon P Smith
+Category:            Text
+Build-type:          Simple
+Cabal-version:       >=1.2
+
+
+Library
+  hs-source-dirs: src
+  -- Modules exported by the library.
+  Exposed-modules:     Json
+  
+  -- Packages needed in order to build this package.
+  Build-depends:       base,
+                       bytestring,
+                       blaze-builder
+  
+  -- Modules not exported by this package.
+  -- Other-modules:       
+  
+  -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
+  -- Build-tools:         
+  
