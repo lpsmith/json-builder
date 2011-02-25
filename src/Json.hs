@@ -105,14 +105,16 @@ instance Value Bool where
   toBuilder False = fromByteString "false"
 
 instance Value BS.ByteString where
-  toBuilder x = fromWrite (loop ("\"",x))
+  toBuilder x = fromWrite (writeChar '"' `mappend` loop (splitQ x))
     where
       loop (a,b)
         = writeByteString a `mappend`
             case BU.decode b of
               Nothing     ->  writeChar '"'
               Just (c,n)  ->  writeByteString (quoteChar c) `mappend`
-                                loop (BU.break quoteNeeded (BS.drop n b))
+                                loop (splitQ (BS.drop n b))
+
+      splitQ = BU.break quoteNeeded
 
       quoteNeeded :: Char -> Bool
       quoteNeeded c = case c of
@@ -143,7 +145,6 @@ instance Value BS.ByteString where
           char i
             | i < 10    = (c2w '0' -  0) + i
             | otherwise = (c2w 'a' - 10) + i
-
 
 
 -- Convenient (?) instances for json-builder
