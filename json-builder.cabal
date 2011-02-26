@@ -17,9 +17,11 @@ Library
   Exposed-modules:     Json
   
   -- Packages needed in order to build this package.
-  Build-depends:       base,
+  Build-depends:       base >= 4 && < 5,
+                       blaze-builder,
                        bytestring,
-                       blaze-builder
+                       containers,
+                       utf8-string
   
   -- Modules not exported by this package.
   -- Other-modules:       

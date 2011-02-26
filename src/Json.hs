@@ -11,6 +11,7 @@
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE BangPatterns      #-}
 
 module Json
@@ -31,6 +32,7 @@ import qualified Data.ByteString.UTF8   as BU
 import           Data.ByteString.Char8()
 import           Data.ByteString.Internal (w2c, c2w)
 import qualified Data.Char              as Char
+import qualified Data.Map               as Map
 import           Data.Word (Word16, Word8)
 import           Data.Bits (shiftL, shiftR)
 
@@ -155,3 +157,6 @@ instance Value a => Value (Maybe a) where
 
 instance Value a => Value [a] where
   toBuilder = toBuilder . mconcat . map element
+
+instance Value a => Value (Map.Map BS.ByteString a) where
+  toBuilder = toBuilder . Map.foldWithKey (\k a b -> row k a `mappend` b) mempty
