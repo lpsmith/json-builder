@@ -119,10 +119,7 @@ instance Value BS.ByteString where
       splitQ = BU.break quoteNeeded
 
       quoteNeeded :: Char -> Bool
-      quoteNeeded c = case c of
-                         '\\' -> True
-                         '"'  -> True
-                         _    -> Char.isControl c
+      quoteNeeded c = c == '\\' || c == '"' || Char.ord c < 0x20
 
       quoteChar :: Char -> BS.ByteString
       quoteChar c = case c of
