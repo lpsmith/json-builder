@@ -22,6 +22,7 @@ Library
                        bytestring,
                        containers,
                        text,
+                       blaze-textual,
                        utf8-string
   
   -- Modules not exported by this package.

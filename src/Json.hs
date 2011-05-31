@@ -10,9 +10,11 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE BangPatterns      #-}
+{-# LANGUAGE BangPatterns         #-}
+{-# LANGUAGE OverloadedStrings    #-}
+{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Json
      ( Value(..)
@@ -35,8 +37,11 @@ import qualified Data.Char              as Char
 import qualified Data.Map               as Map
 import           Data.Word (Word16, Word8)
 import           Data.Bits (shiftL, shiftR)
+import           Data.String (IsString)
 import           Data.Text (Text)
+import qualified Data.Text              as T
 import           Data.Text.Encoding (encodeUtf8)
+import           Blaze.Text (float, double, integral)
 
 
 ---- The "core" of json-builder
@@ -47,6 +52,8 @@ class Value a where
   toLazyByteString :: a -> BL.ByteString
   toByteString     = Blaze.toByteString     . toBuilder
   toLazyByteString = Blaze.toLazyByteString . toBuilder
+
+class Value a => Key a
 
 data Pair = Pair !Blaze.Builder !Bool
 
@@ -63,7 +70,7 @@ instance Monoid Object where
                          Pair fb x' -> case g x' of
                                          Pair gb x'' -> Pair (fb `mappend` gb) x''
 
-row :: Value a => BS.ByteString -> a -> Object
+row :: (Key a, Value b) => a -> b -> Object
 row str a = Object $ comma (mconcat [ toBuilder str, fromChar ':',  toBuilder a ])
   where
     comma b True  = Pair b False
@@ -95,14 +102,14 @@ element a = Array $ comma (toBuilder a)
 instance Value () where
   toBuilder _ = fromByteString "null"
 
-instance Value Integer where
-  -- FIXME:  Should this be more efficient?
-  toBuilder x = fromString (show x)
+instance Integral a => Value a where
+  toBuilder = integral
 
 instance Value Double where
-  -- FIXME:  Do we emit the correct syntax?
-  -- FIXME:  Should this be more efficient?
-  toBuilder x = fromString (show x)
+  toBuilder = double
+
+instance Value Float where
+  toBuilder = float
 
 instance Value Bool where
   toBuilder True  = fromByteString "true"
@@ -147,9 +154,20 @@ instance Value BS.ByteString where
             | i < 10    = (c2w '0' -  0) + i
             | otherwise = (c2w 'a' - 10) + i
 
+instance Key BS.ByteString
+
+-- FIXME: rewrite/optimize the quoting routines for ByteString, Text, String
+--        Should we support direct quoting of lazy strings?
+
 instance Value Text where
   toBuilder = toBuilder . encodeUtf8
 
+instance Key Text
+
+instance Value [Char] where
+  toBuilder = toBuilder . BU.fromString
+
+instance Key [Char]
 
 -- Convenient (?) instances for json-builder
 
@@ -161,4 +179,4 @@ instance Value a => Value [a] where
   toBuilder = toBuilder . mconcat . map element
 
 instance Value a => Value (Map.Map BS.ByteString a) where
-  toBuilder = toBuilder . Map.foldWithKey (\k a b -> row k a `mappend` b) mempty
+  toBuilder = toBuilder . Map.foldrWithKey (\k a b -> row k a `mappend` b) mempty
