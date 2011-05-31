@@ -147,7 +147,7 @@ instance Value BS.ByteString where
             | i < 10    = (c2w '0' -  0) + i
             | otherwise = (c2w 'a' - 10) + i
 
-instace Value Text where
+instance Value Text where
   toBuilder = toBuilder . encodeUtf8
 
 
