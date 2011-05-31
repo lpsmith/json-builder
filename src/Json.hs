@@ -35,6 +35,8 @@ import qualified Data.Char              as Char
 import qualified Data.Map               as Map
 import           Data.Word (Word16, Word8)
 import           Data.Bits (shiftL, shiftR)
+import           Data.Text (Text)
+import           Data.Text.Encoding (encodeUtf8)
 
 
 ---- The "core" of json-builder
@@ -144,6 +146,9 @@ instance Value BS.ByteString where
           char i
             | i < 10    = (c2w '0' -  0) + i
             | otherwise = (c2w 'a' - 10) + i
+
+instace Value Text where
+  toBuilder = toBuilder . encodeUtf8
 
 
 -- Convenient (?) instances for json-builder

@@ -21,6 +21,7 @@ Library
                        blaze-builder,
                        bytestring,
                        containers,
+                       text,
                        utf8-string
   
   -- Modules not exported by this package.
@@ -28,4 +29,3 @@ Library
   
   -- Extra tools (e.g. alex, hsc2hs, ...) needed to build the source.
   -- Build-tools:         
-  
