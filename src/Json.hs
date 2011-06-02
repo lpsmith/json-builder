@@ -137,7 +137,7 @@ instance Value BS.ByteString where
         = fromByteString a `mappend`
             case BU.decode b of
               Nothing     ->  fromChar '"'
-              Just (c,n)  ->  fromWrite (quoteChar c) `mappend`
+              Just (c,n)  ->  quoteChar c `mappend`
                                 loop (splitQ (BS.drop n b))
 
 instance Key BS.ByteString
@@ -151,7 +151,7 @@ instance Value BL.ByteString where
         = fromLazyByteString a `mappend`
             case BLU.decode b of
               Nothing     ->  fromChar '"'
-              Just (c,n)  ->  fromWrite (quoteChar c) `mappend`
+              Just (c,n)  ->  quoteChar c `mappend`
                                 loop (splitQ (BL.drop n b))
 
 instance Key BL.ByteString
@@ -184,22 +184,22 @@ instance Value a => Value (Map.Map BS.ByteString a) where
 quoteNeeded :: Char -> Bool
 quoteNeeded c = c == '\\' || c == '"' || Char.ord c < 0x20
 
-quoteChar :: Char -> Write
+quoteChar :: Char -> Builder
 quoteChar c = case c of
-                '\\'  ->  writeByteString "\\\\"
-                '"'   ->  writeByteString "\\\""
-                '\b'  ->  writeByteString "\\b"
-                '\f'  ->  writeByteString "\\f"
-                '\n'  ->  writeByteString "\\n"
-                '\r'  ->  writeByteString "\\r"
-                '\t'  ->  writeByteString "\\t"
+                '\\'  ->  copyByteString "\\\\"
+                '"'   ->  copyByteString "\\\""
+                '\b'  ->  copyByteString "\\b"
+                '\f'  ->  copyByteString "\\f"
+                '\n'  ->  copyByteString "\\n"
+                '\r'  ->  copyByteString "\\r"
+                '\t'  ->  copyByteString "\\t"
                 _     ->  hexEscape c
 
-hexEscape  :: Char -> Write
+hexEscape  :: Char -> Builder
 hexEscape  (c2w -> c)
-  = writeByteString "\\u00"
-    `mappend` writeWord8 (char ((c `shiftR`  4) .&. 0xF))
-    `mappend` writeWord8 (char ( c              .&. 0xF))
+  = fromWrite (writeByteString "\\u00"
+               `mappend` writeWord8 (char ((c `shiftR` 4) .&. 0xF))
+               `mappend` writeWord8 (char ( c             .&. 0xF)))
 
 char :: Word8 -> Word8
 char i | i < 10    = i + 48
