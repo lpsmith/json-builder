@@ -15,7 +15,7 @@
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE OverlappingInstances #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Json
      ( Key  (..)
@@ -24,18 +24,28 @@ module Json
      , row
      , Array
      , element
+     , Escaped(..)
      ) where
 
 import           Blaze.ByteString.Builder as Blaze
-import           Blaze.ByteString.Builder.ByteString
-import           Blaze.ByteString.Builder.Char8 (fromChar)
-import           Blaze.ByteString.Builder.Char.Utf8 (fromText, fromLazyText)
+                   ( Write
+                   , Builder
+                   , copyByteString
+                   , fromByteString
+                   , fromLazyByteString
+                   , writeByteString
+                   , fromWrite
+                   , fromWriteList
+                   , writeWord8         )
+import           Blaze.ByteString.Builder.Char.Utf8
+                   ( fromChar, writeChar, fromText, fromLazyText )
 import           Blaze.Text (float, double, integral)
 
-import           Data.Bits (shiftL, shiftR, (.&.))
+import           Data.Bits ( Bits((.&.), shiftR) )
 import qualified Data.Map               as Map
-import           Data.Monoid
-import           Data.Word (Word16, Word8)
+import           Data.Monoid ( Monoid (mempty, mappend, mconcat) )
+import           Data.Int    ( Int8, Int16, Int32, Int64)
+import           Data.Word   ( Word, Word8, Word16, Word32, Word64 )
 
 import qualified Data.Char              as Char
 
@@ -44,22 +54,30 @@ import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as BU
 import qualified Data.ByteString.Lazy.UTF8 as BLU
 import           Data.ByteString.Char8()
-import           Data.ByteString.Internal (w2c, c2w)
+import           Data.ByteString.Internal ( c2w )
 
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
 
 ---- The "core" of json-builder
 
+class Value a => Key a where
+  escape           :: a -> Escaped
+
 class Value a where
   toBuilder        :: a -> Blaze.Builder
 
-class Value a => Key a
+newtype Escaped = Escaped Blaze.Builder deriving (Monoid)
+
+instance Key Escaped where
+  escape = id
+
+instance Value Escaped where
+  toBuilder (Escaped str) = fromChar '"' `mappend` str `mappend` fromChar '"'
 
 data Pair = Pair !Blaze.Builder !Bool
 
 newtype Object = Object (Bool -> Pair)
-
 instance Value Object where
   toBuilder (Object f)
     = case f True of
@@ -110,7 +128,37 @@ element a = Array $ comma (toBuilder a)
 instance Value () where
   toBuilder _ = copyByteString "null"
 
-instance Integral a => Value a where
+instance Value Int     where
+  toBuilder = integral
+
+instance Value Int8    where
+  toBuilder = integral
+
+instance Value Int16   where
+  toBuilder = integral
+
+instance Value Int32   where
+  toBuilder = integral
+
+instance Value Int64   where
+  toBuilder = integral
+
+instance Value Integer where
+  toBuilder = integral
+
+instance Value Word    where
+  toBuilder = integral
+
+instance Value Word8   where
+  toBuilder = integral
+
+instance Value Word16  where
+  toBuilder = integral
+
+instance Value Word32  where
+  toBuilder = integral
+
+instance Value Word64  where
   toBuilder = integral
 
 instance Value Double where
@@ -123,68 +171,74 @@ instance Value Bool where
   toBuilder True  = copyByteString "true"
   toBuilder False = copyByteString "false"
 
-instance Value BS.ByteString where
-  toBuilder x = fromChar '"' `mappend` loop (splitQ x)
+instance Key BS.ByteString where
+  escape x = Escaped (loop (splitQ x))
     where
       splitQ = BU.break quoteNeeded
 
       loop (a,b)
         = fromByteString a `mappend`
             case BU.decode b of
-              Nothing     ->  fromChar '"'
-              Just (c,n)  ->  quoteChar c `mappend`
+              Nothing     ->  mempty
+              Just (c,n)  ->  fromWrite (quoteChar c) `mappend`
                                 loop (splitQ (BS.drop n b))
 
-instance Key BS.ByteString
+instance Value BS.ByteString where
+  toBuilder = toBuilder . escape
 
-instance Value BL.ByteString where
-  toBuilder x = fromChar '"' `mappend` loop (splitQ x)
+instance Key BL.ByteString where
+  escape x = Escaped (loop (splitQ x))
     where
       splitQ = BLU.break quoteNeeded
 
       loop (a,b)
         = fromLazyByteString a `mappend`
             case BLU.decode b of
-              Nothing     ->  fromChar '"'
-              Just (c,n)  ->  quoteChar c `mappend`
+              Nothing     ->  mempty
+              Just (c,n)  ->  fromWrite (quoteChar c) `mappend`
                                 loop (splitQ (BL.drop n b))
 
-instance Key BL.ByteString
+instance Value BL.ByteString where
+  toBuilder = toBuilder . escape
 
-instance Value T.Text where
-  toBuilder x = fromChar '"' `mappend` loop (splitQ x)
+instance Key T.Text where
+  escape x = Escaped (loop (splitQ x))
     where
       splitQ = T.break quoteNeeded
 
       loop (a,b)
         = fromText a `mappend`
             case T.uncons b of
-              Nothing      ->  fromChar '"'
-              Just (c,b')  ->  quoteChar c `mappend` loop (splitQ b')
+              Nothing      ->  mempty
+              Just (c,b')  ->  fromWrite (quoteChar c) `mappend`
+                                 loop (splitQ b')
 
-instance Key T.Text
+instance Value T.Text where
+  toBuilder = toBuilder . escape
 
-instance Value TL.Text where
-  toBuilder x = fromChar '"' `mappend` loop (splitQ x)
+instance Key TL.Text where
+  escape x = Escaped (loop (splitQ x))
     where
       splitQ = TL.break quoteNeeded
 
       loop (a,b)
         = fromLazyText a `mappend`
             case TL.uncons b of
-              Nothing      ->  fromChar '"'
-              Just (c,b')  ->  quoteChar c `mappend` loop (splitQ b')
+              Nothing      ->  mempty
+              Just (c,b')  ->  fromWrite (quoteChar c) `mappend`
+                                 loop (splitQ b')
 
-instance Key TL.Text
+instance Value TL.Text where
+  toBuilder = toBuilder . escape
 
--- FIXME: rewrite/optimize the quoting routines for Strings
+instance Key [Char] where
+  escape str = Escaped (fromWriteList writeEscapedChar str)
+    where
+      writeEscapedChar c | quoteNeeded c = quoteChar c
+                         | otherwise     = writeChar c
 
 instance Value [Char] where
-  toBuilder = toBuilder . BU.fromString
-
-instance Key [Char]
-
--- Convenient (?) instances for json-builder
+  toBuilder = toBuilder . escape
 
 instance Value a => Value [a] where
   toBuilder = toBuilder . mconcat . map element
@@ -193,28 +247,28 @@ instance (Key k, Value a) => Value (Map.Map k a) where
   toBuilder = toBuilder
             . Map.foldrWithKey (\k a b -> row k a `mappend` b) mempty
 
-
 ------------------------------------------------------------------------------
 
 quoteNeeded :: Char -> Bool
 quoteNeeded c = c == '\\' || c == '"' || Char.ord c < 0x20
+{-# INLINE quoteNeeded #-}
 
-quoteChar :: Char -> Builder
+quoteChar :: Char -> Write
 quoteChar c = case c of
-                '\\'  ->  copyByteString "\\\\"
-                '"'   ->  copyByteString "\\\""
-                '\b'  ->  copyByteString "\\b"
-                '\f'  ->  copyByteString "\\f"
-                '\n'  ->  copyByteString "\\n"
-                '\r'  ->  copyByteString "\\r"
-                '\t'  ->  copyByteString "\\t"
+                '\\'  ->  writeByteString "\\\\"
+                '"'   ->  writeByteString "\\\""
+                '\b'  ->  writeByteString "\\b"
+                '\f'  ->  writeByteString "\\f"
+                '\n'  ->  writeByteString "\\n"
+                '\r'  ->  writeByteString "\\r"
+                '\t'  ->  writeByteString "\\t"
                 _     ->  hexEscape c
 
-hexEscape  :: Char -> Builder
+hexEscape  :: Char -> Write
 hexEscape  (c2w -> c)
-  = fromWrite (writeByteString "\\u00"
-               `mappend` writeWord8 (char ((c `shiftR` 4) .&. 0xF))
-               `mappend` writeWord8 (char ( c             .&. 0xF)))
+  = writeByteString "\\u00"
+    `mappend` writeWord8 (char ((c `shiftR` 4) .&. 0xF))
+    `mappend` writeWord8 (char ( c             .&. 0xF))
 
 char :: Word8 -> Word8
 char i | i < 10    = i + 48
