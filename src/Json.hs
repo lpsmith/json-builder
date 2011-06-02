@@ -53,7 +53,6 @@ import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as BU
 import qualified Data.ByteString.Lazy.UTF8 as BLU
-import           Data.ByteString.Char8()
 import           Data.ByteString.Internal ( c2w )
 
 import qualified Data.Text              as T
