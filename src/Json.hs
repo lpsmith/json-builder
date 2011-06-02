@@ -18,7 +18,8 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Json
-     ( Value(..)
+     ( Key  (..)
+     , Value(..)
      , Object
      , row
      , Array
@@ -27,8 +28,8 @@ module Json
 
 import           Blaze.ByteString.Builder as Blaze
 import           Blaze.ByteString.Builder.ByteString
-import           Blaze.ByteString.Builder.Char8
--- import           Blaze.ByteString.Builder.Char.Utf8
+import           Blaze.ByteString.Builder.Char8 (fromChar)
+import           Blaze.ByteString.Builder.Char.Utf8 (fromText, fromLazyText)
 import           Blaze.Text (float, double, integral)
 
 import           Data.Bits (shiftL, shiftR, (.&.))
@@ -45,9 +46,8 @@ import qualified Data.ByteString.Lazy.UTF8 as BLU
 import           Data.ByteString.Char8()
 import           Data.ByteString.Internal (w2c, c2w)
 
-import           Data.Text (Text)
 import qualified Data.Text              as T
-import           Data.Text.Encoding (encodeUtf8)
+import qualified Data.Text.Lazy         as TL
 
 ---- The "core" of json-builder
 
@@ -74,10 +74,10 @@ instance Monoid Object where
                             Pair gb x'' ->
                                  Pair (fb `mappend` gb) x''
 
-row :: (Key a, Value b) => a -> b -> Object
-row a b = Object syntax
+row :: (Key k, Value a) => k -> a -> Object
+row k a = Object syntax
   where
-    syntax = comma (mconcat [ toBuilder a, fromChar ':',  toBuilder b ])
+    syntax = comma (mconcat [ toBuilder k, fromChar ':',  toBuilder a ])
     comma b True  = Pair b False
     comma b False = Pair (fromChar ',' `mappend` b) False
 
@@ -108,7 +108,7 @@ element a = Array $ comma (toBuilder a)
 -- Primitive instances for json-builder
 
 instance Value () where
-  toBuilder _ = fromByteString "null"
+  toBuilder _ = copyByteString "null"
 
 instance Integral a => Value a where
   toBuilder = integral
@@ -120,8 +120,8 @@ instance Value Float where
   toBuilder = float
 
 instance Value Bool where
-  toBuilder True  = fromByteString "true"
-  toBuilder False = fromByteString "false"
+  toBuilder True  = copyByteString "true"
+  toBuilder False = copyByteString "false"
 
 instance Value BS.ByteString where
   toBuilder x = fromChar '"' `mappend` loop (splitQ x)
@@ -151,13 +151,33 @@ instance Value BL.ByteString where
 
 instance Key BL.ByteString
 
--- FIXME: rewrite/optimize the quoting routines for ByteString, Text, String
---        Should we support direct quoting of lazy ByteStrings/ lazy Text?
+instance Value T.Text where
+  toBuilder x = fromChar '"' `mappend` loop (splitQ x)
+    where
+      splitQ = T.break quoteNeeded
 
-instance Value Text where
-  toBuilder = toBuilder . encodeUtf8
+      loop (a,b)
+        = fromText a `mappend`
+            case T.uncons b of
+              Nothing      ->  fromChar '"'
+              Just (c,b')  ->  quoteChar c `mappend` loop (splitQ b')
 
-instance Key Text
+instance Key T.Text
+
+instance Value TL.Text where
+  toBuilder x = fromChar '"' `mappend` loop (splitQ x)
+    where
+      splitQ = TL.break quoteNeeded
+
+      loop (a,b)
+        = fromLazyText a `mappend`
+            case TL.uncons b of
+              Nothing      ->  fromChar '"'
+              Just (c,b')  ->  quoteChar c `mappend` loop (splitQ b')
+
+instance Key TL.Text
+
+-- FIXME: rewrite/optimize the quoting routines for Strings
 
 instance Value [Char] where
   toBuilder = toBuilder . BU.fromString
@@ -169,7 +189,7 @@ instance Key [Char]
 instance Value a => Value [a] where
   toBuilder = toBuilder . mconcat . map element
 
-instance Value a => Value (Map.Map BS.ByteString a) where
+instance (Key k, Value a) => Value (Map.Map k a) where
   toBuilder = toBuilder
             . Map.foldrWithKey (\k a b -> row k a `mappend` b) mempty
 
