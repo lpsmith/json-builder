@@ -53,17 +53,12 @@ import           Data.Text.Encoding (encodeUtf8)
 
 class Value a where
   toBuilder        :: a -> Blaze.Builder
-  toByteString     :: a -> BS.ByteString
-  toLazyByteString :: a -> BL.ByteString
-  toByteString     = Blaze.toByteString     . toBuilder
-  toLazyByteString = Blaze.toLazyByteString . toBuilder
 
 class Value a => Key a
 
+data Pair = Pair !Blaze.Builder !Bool
 
 newtype Object = Object (Bool -> Pair)
-
-data Pair = Pair !Blaze.Builder !Bool
 
 instance Value Object where
   toBuilder (Object f)
