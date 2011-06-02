@@ -4,13 +4,21 @@
 
 Unfortunately, `json-builder` cannot yet read or process json data.  Moreover, it's not clear to me how to pull a similar kind of trick as above,  and avoid unnecessary data structures. 
 
-This library revolves around a single typeclass `Json.Value` that represents pieces of data that can be serialized to the Json format.   The most important member is `toBuilder`, which returns a blaze-builder that represents the concrete syntax of that value.   The other members of the typeclass are supplied for convenience and need not be explicitly defined in any instance.  
+This library revolves around a single typeclass `Json.Value` that represents pieces of data that can be serialized to the Json format.   It's member is `toBuilder`, which returns a [builder](http://hackage.haskell.org/packages/archive/blaze-builder/0.3.0.1/doc/html/Blaze-ByteString-Builder.html) that represents the concrete syntax of that value.
 
     class Json.Value a where
       toBuilder        :: a -> Blaze.ByteString.Builder
-      toByteString     :: a -> Data.ByteString.ByteString
-      toLazyByteString :: a -> Data.ByteString.Lazy.ByteString
 
-Arrays are represented by an abstract type that is a monoid and has one constructor to write a single element;  Objects are similar.
+If a user-supplied instance of `Json.Value` uses functions from [blaze-builder](http://hackage.haskell.org/package/blaze-builder), then it is possible to emit invalid JSON strings.   This is one disadvantage relative to specifying a data structure.  However valid JSON is guaranteed if these instances use only valid `toBuilder` methods to create builders.
 
-One disadvantage this approach compared to the specified data structure is that the user-supplied instances of the `Json` typeclass can emit invalid JSON strings.  This shouldn't be a significant problem in practice,  because instances of `Json` should typically occur less often than uses of `toBuilder`, and valid JSON is guaranteed if these instances use only valid `toBuilder` definitions and does not create it's own builders through the Blaze.Builder.* modules.
+Arrays are represented by an abstract type with a singleton constructor `element` and a [monoid](http://www.haskell.org/ghc/docs/7.0-latest/html/libraries/base-4.3.1.0/Data-Monoid.html#t:Monoid) instance.  Thus arbitrary sequences can be serialized using `mempty` and `mappend`.
+
+    element :: Value a => a -> Array
+    instance Monoid Array
+
+Objects are similar.  There is a typeclass "Key" used to distinguish Strings from other Json values which cannot be keys,  a singleton constructor,  and a monoid instance. Note that rows with duplicate keys will appear in the output; it is up to the user of this interface to ensure that keys are unique.
+
+    class Value a => Key a
+
+    row :: (Key a, Value b) => a -> b -> Object
+    instance Monoid Object
