@@ -6,7 +6,7 @@ License-file:        LICENSE
 Author:              Leon P Smith
 Maintainer:          leon@melding-monads.com
 Copyright:           (c) 2011 Leon P Smith
-Category:            Text
+Category:            Text, Web, JSON
 Build-type:          Simple
 Cabal-version:       >=1.2
 
@@ -14,7 +14,7 @@ Cabal-version:       >=1.2
 Library
   hs-source-dirs: src
   -- Modules exported by the library.
-  Exposed-modules:     Json
+  Exposed-modules:     Data.Json.Builder
   
   -- Packages needed in order to build this package.
   Build-depends:       base >= 4 && < 5,

@@ -1,6 +1,6 @@
 -----------------------------------------------------------------------------
 -- |
--- Module      :  Json
+-- Module      :  Data.Json.Builder
 -- Copyright   :  (c) 2011 Leon P Smith
 -- License     :  BSD3
 --
@@ -17,7 +17,7 @@
 {-# LANGUAGE OverlappingInstances #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
-module Json
+module Data.Json.Builder
      ( Key  (..)
      , Value(..)
      , Object
@@ -76,6 +76,7 @@ instance Value Escaped where
 
 type CommaTracker = (Bool -> Blaze.Builder) -> Bool -> Blaze.Builder
 
+comma :: Blaze.Builder -> CommaTracker
 comma b f True  =                        b `mappend` f False
 comma b f False = fromChar ',' `mappend` b `mappend` f False
 {-# INLINE comma #-}

@@ -1,8 +1,8 @@
-`json-builder` is a data structure agnostic json serialization library.  Most existing serializers operate on a specified data structure that corresponds to a json value.   Other pieces of data must then marshaled into that specific structure before they can be serialized to json.   
+`json-builder` is a data structure agnostic json serialization library.  Most existing serializers operate on a specific data structure that corresponds to a json value.   Other pieces of data must then marshaled into that data structure before they can be serialized to json.
 
-`json-builder` avoids this marshaling,  and thus is potentially more efficient when you want to turn an arbitrary data structure into a json string.  Moreover,  I've found that writing a  custom serializer for this API to be somewhat simpler than writing a custom marshaller into the data structures that say, the [json](http://hackage.haskell.org/package/json)  or  [aeson](http://hackage.haskell.org/package/aeson) packages use.
+`json-builder` avoids this marshaling,  and thus is potentially more efficient when you want to serialize arbitrary data structures.  Moreover,  I've found that writing a serializer using this API to be somewhat simpler than writing a marshaller into the data structures used by the [json](http://hackage.haskell.org/package/json) or [aeson](http://hackage.haskell.org/package/aeson) packages.
 
-Unfortunately, `json-builder` cannot yet read or process json data.  Moreover, it's not clear to me how to pull a similar kind of trick as above,  and avoid unnecessary data structures. 
+Unfortunately, `json-builder` cannot yet read or process json data.  Moreover, it's not clear to me how to pull a similar kind of trick above,  and avoid unnecessary data structures.
 
 This library revolves around a single typeclass `Json.Value` that represents pieces of data that can be serialized to the Json format.   It's member is `toBuilder`, which returns a [builder](http://hackage.haskell.org/packages/archive/blaze-builder/0.3.0.1/doc/html/Blaze-ByteString-Builder.html) that represents the concrete syntax of that value.
 
