@@ -58,8 +58,10 @@ import           Data.ByteString.Internal ( c2w )
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
 
--- | The 'Key' typeclass represents types that are rendered 
--- into json strings.  They are special because only strings 
+import qualified Data.HashMap.Lazy      as HashMap
+
+-- | The 'Key' typeclass represents types that are rendered
+-- into json strings.  They are special because only strings
 -- can appear as field names of a json objects.
 
 class Value a => Key a where
@@ -71,11 +73,11 @@ class Value a => Key a where
 class Value a where
   toBuilder        :: a -> Blaze.Builder
 
--- | The 'Escaped' type is a special Builder value that represents a UTF-8 
+-- | The 'Escaped' type is a special Builder value that represents a UTF-8
 -- encoded string with all necessary characters json-escaped.  These builders
 -- must not render the opening or closing quotes,  which are instead rendered
 -- by 'toBuilder'.  This is so that Json strings can be efficiently constructed
--- from multiple Haskell strings without actually concatinating the Haskell 
+-- from multiple Haskell strings without actually concatinating the Haskell
 -- strings (which might require some kind of conversion in addition to
 -- concatination.)
 
@@ -96,9 +98,9 @@ comma b f False = fromChar ',' `mappend` b `mappend` f False
 
 -- |  The 'Object' type represents a builder that constructs syntax for a
 -- json object.  It has a singleton constructor 'row', and an instance of
--- monoid, so that arbitrary objects can be constructed.  Note that 
+-- monoid, so that arbitrary objects can be constructed.  Note that
 -- duplicate field names will appear in the output, so it is up to the
--- user of this interface to avoid duplicate field names. 
+-- user of this interface to avoid duplicate field names.
 
 newtype Object = Object CommaTracker
 
@@ -110,7 +112,7 @@ instance Monoid Object where
   mappend (Object f) (Object g) = Object (f . g)
 
 -- | The 'row' constructs a json object consisting of exactly one field.
--- These objects can be concatinated using 'mappend'. 
+-- These objects can be concatinated using 'mappend'.
 row :: (Key k, Value a) => k -> a -> Object
 row k a = Object syntax
   where
@@ -257,6 +259,10 @@ instance Value a => Value [a] where
 instance (Key k, Value a) => Value (Map.Map k a) where
   toBuilder = toBuilder
             . Map.foldrWithKey (\k a b -> row k a `mappend` b) mempty
+
+instance (Key k, Value a) => Value (HashMap.HashMap k a) where
+  toBuilder = toBuilder
+            . HashMap.foldrWithKey (\k a b -> row k a `mappend` b) mempty
 
 ------------------------------------------------------------------------------
 

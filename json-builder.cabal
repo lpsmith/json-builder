@@ -13,9 +13,9 @@ Cabal-version:       >= 1.6
 homepage:            http://github.com/lpsmith/json-builder
 bug-reports:         http://github.com/lpsmith/json-builder/issues
 description:
-    Most json packages define a data structure that corresponds to json values.
-    To serialize other values to a json string, then that value must be
-    marshalled into the json data structure.
+    Most json packages dictate a data structure that corresponds to json values.
+    To serialize other values to json, then that value must be marshalled into
+    the specified structure.
     .
     This library avoids this marshalling step, and is thus potentially more
     efficient when serializing arbitrary data structures.  Unfortunately
@@ -33,13 +33,14 @@ Library
                        bytestring,
                        containers,
                        text,
+                       unordered-containers,
                        utf8-string
 
 source-repository head
   type:     git
   location: http://github.com/lpsmith/json-builder
 
-source-repository this
-  type:     git
-  location: http://github.com/lpsmith/json-builder
-  tag:      v0.0
+-- source-repository this
+--   type:     git
+--   location: http://github.com/lpsmith/json-builder
+--   tag:      v0.1
