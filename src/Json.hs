@@ -74,53 +74,38 @@ instance Key Escaped where
 instance Value Escaped where
   toBuilder (Escaped str) = fromChar '"' `mappend` str `mappend` fromChar '"'
 
-data Pair = Pair !Blaze.Builder !Bool
+type CommaTracker = (Bool -> Blaze.Builder) -> Bool -> Blaze.Builder
 
-newtype Object = Object (Bool -> Pair)
+comma b f True  =                        b `mappend` f False
+comma b f False = fromChar ',' `mappend` b `mappend` f False
+{-# INLINE comma #-}
+
+newtype Object = Object CommaTracker
+
 instance Value Object where
-  toBuilder (Object f)
-    = case f True of
-        Pair fb _ -> mconcat [fromChar '{', fb, fromChar '}']
+  toBuilder (Object f) = fromChar '{' `mappend` f (\_ -> fromChar '}') True
 
 instance Monoid Object where
-  mempty = Object $ \x -> Pair mempty x
-  mappend (Object f) (Object g)
-    = Object $ \x -> case f x of
-                      Pair fb x' ->
-                           case g x' of
-                            Pair gb x'' ->
-                                 Pair (fb `mappend` gb) x''
+  mempty = Object id
+  mappend (Object f) (Object g) = Object (f . g)
 
 row :: (Key k, Value a) => k -> a -> Object
 row k a = Object syntax
   where
     syntax = comma (mconcat [ toBuilder k, fromChar ':',  toBuilder a ])
-    comma b True  = Pair b False
-    comma b False = Pair (fromChar ',' `mappend` b) False
 
 
-newtype Array = Array (Bool -> Pair)
+newtype Array = Array CommaTracker
 
 instance Value Array where
-  toBuilder (Array f)
-    = case f True of
-        Pair fb _ -> mconcat [fromChar '[', fb, fromChar ']']
+  toBuilder (Array f) = fromChar '[' `mappend` f (\_ -> fromChar ']') True
 
 instance Monoid Array where
-  mempty = Array $ \x -> Pair mempty x
-  mappend (Array f) (Array g)
-    = Array $ \x -> case f x of
-                     Pair fb x' ->
-                          case g x' of
-                           Pair gb x'' ->
-                                Pair (fb `mappend` gb) x''
+  mempty = Array id
+  mappend (Array f) (Array g) = Array (f . g)
 
 element :: Value a => a -> Array
 element a = Array $ comma (toBuilder a)
-  where
-    comma b True  = Pair b False
-    comma b False = Pair (fromChar ',' `mappend` b) False
-
 
 -- Primitive instances for json-builder
 
