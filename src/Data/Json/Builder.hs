@@ -58,13 +58,26 @@ import           Data.ByteString.Internal ( c2w )
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
 
----- The "core" of json-builder
+-- | The 'Key' typeclass represents types that are rendered 
+-- into json strings.  They are special because only strings 
+-- can appear as field names of a json objects.
 
 class Value a => Key a where
   escape           :: a -> Escaped
 
+-- | The 'Value' typeclass represents types that can be rendered
+-- into valid json syntax.
+
 class Value a where
   toBuilder        :: a -> Blaze.Builder
+
+-- | The 'Escaped' type is a special Builder value that represents a UTF-8 
+-- encoded string with all necessary characters json-escaped.  These builders
+-- must not render the opening or closing quotes,  which are instead rendered
+-- by 'toBuilder'.  This is so that Json strings can be efficiently constructed
+-- from multiple Haskell strings without actually concatinating the Haskell 
+-- strings (which might require some kind of conversion in addition to
+-- concatination.)
 
 newtype Escaped = Escaped Blaze.Builder deriving (Monoid)
 
@@ -81,6 +94,12 @@ comma b f True  =                        b `mappend` f False
 comma b f False = fromChar ',' `mappend` b `mappend` f False
 {-# INLINE comma #-}
 
+-- |  The 'Object' type represents a builder that constructs syntax for a
+-- json object.  It has a singleton constructor 'row', and an instance of
+-- monoid, so that arbitrary objects can be constructed.  Note that 
+-- duplicate field names will appear in the output, so it is up to the
+-- user of this interface to avoid duplicate field names. 
+
 newtype Object = Object CommaTracker
 
 instance Value Object where
@@ -90,11 +109,16 @@ instance Monoid Object where
   mempty = Object id
   mappend (Object f) (Object g) = Object (f . g)
 
+-- | The 'row' constructs a json object consisting of exactly one field.
+-- These objects can be concatinated using 'mappend'. 
 row :: (Key k, Value a) => k -> a -> Object
 row k a = Object syntax
   where
     syntax = comma (mconcat [ toBuilder k, fromChar ':',  toBuilder a ])
 
+-- |  The 'Array' type represents a builder that constructs syntax for a
+-- json array.  It has a singleton constructor 'element' and an instance of
+-- monoid, so that arbitrary arrays can be constructed.
 
 newtype Array = Array CommaTracker
 
@@ -105,6 +129,8 @@ instance Monoid Array where
   mempty = Array id
   mappend (Array f) (Array g) = Array (f . g)
 
+-- |  The 'element' function constructs a json array consisting of exactly
+-- one value.  These arrays can be concatinated using 'mappend'.
 element :: Value a => a -> Array
 element a = Array $ comma (toBuilder a)
 
