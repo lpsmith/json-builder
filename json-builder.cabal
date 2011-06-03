@@ -1,5 +1,5 @@
 Name:                json-builder
-Version:             0.0
+Version:             0.1
 Synopsis:            Data structure agnostic JSON serialization
 License:             BSD3
 License-file:        LICENSE
