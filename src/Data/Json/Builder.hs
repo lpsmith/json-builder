@@ -14,7 +14,7 @@
 {-# LANGUAGE ViewPatterns         #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE FlexibleInstances    #-}
-{-# LANGUAGE OverlappingInstances #-}
+{-# LANGUAGE IncoherentInstances        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Json.Builder
