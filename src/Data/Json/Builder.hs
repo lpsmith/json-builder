@@ -186,6 +186,8 @@ instance Value Bool where
   toJson True  = Json (copyByteString "true")
   toJson False = Json (copyByteString "false")
 
+-- | must be UTF-8 encoded
+
 instance JsString BS.ByteString where
   escape x = Escaped (loop x)
     where
@@ -197,6 +199,8 @@ instance JsString BS.ByteString where
 
 instance Value BS.ByteString where
   toJson = toJson . escape
+
+-- | must be UTF-8 encoded
 
 instance JsString BL.ByteString where
   escape x = Escaped (loop x)
