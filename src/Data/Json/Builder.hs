@@ -10,10 +10,10 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE BangPatterns         #-}
-{-# LANGUAGE ViewPatterns         #-}
-{-# LANGUAGE OverloadedStrings    #-}
-{-# LANGUAGE FlexibleInstances    #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE ViewPatterns               #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE IncoherentInstances        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
@@ -185,61 +185,49 @@ instance Value Bool where
   toBuilder False = copyByteString "false"
 
 instance Key BS.ByteString where
-  escape x = Escaped (loop (splitQ x))
+  escape x = Escaped (loop x)
     where
-      splitQ = BU.break quoteNeeded
-
-      loop (a,b)
+      loop (BU.break quoteNeeded -> (a,b))
         = fromByteString a `mappend`
             case BU.decode b of
               Nothing     ->  mempty
-              Just (c,n)  ->  fromWrite (quoteChar c) `mappend`
-                                loop (splitQ (BS.drop n b))
+              Just (c,n)  ->  quoteChar c `mappend` loop (BS.drop n b)
 
 instance Value BS.ByteString where
   toBuilder = toBuilder . escape
 
 instance Key BL.ByteString where
-  escape x = Escaped (loop (splitQ x))
+  escape x = Escaped (loop x)
     where
-      splitQ = BLU.break quoteNeeded
-
-      loop (a,b)
+      loop (BLU.break quoteNeeded -> (a,b))
         = fromLazyByteString a `mappend`
             case BLU.decode b of
               Nothing     ->  mempty
-              Just (c,n)  ->  fromWrite (quoteChar c) `mappend`
-                                loop (splitQ (BL.drop n b))
+              Just (c,n)  ->  quoteChar c `mappend` loop (BL.drop n b)
 
 instance Value BL.ByteString where
   toBuilder = toBuilder . escape
 
 instance Key T.Text where
-  escape x = Escaped (loop (splitQ x))
+  escape x = Escaped (loop x)
     where
-      splitQ = T.break quoteNeeded
-
-      loop (a,b)
+      loop (T.break quoteNeeded -> (a,b))
         = fromText a `mappend`
             case T.uncons b of
               Nothing      ->  mempty
-              Just (c,b')  ->  fromWrite (quoteChar c) `mappend`
-                                 loop (splitQ b')
+              Just (c,b')  ->  quoteChar c `mappend` loop b'
 
 instance Value T.Text where
   toBuilder = toBuilder . escape
 
 instance Key TL.Text where
-  escape x = Escaped (loop (splitQ x))
+  escape x = Escaped (loop x)
     where
-      splitQ = TL.break quoteNeeded
-
-      loop (a,b)
+      loop (TL.break quoteNeeded -> (a,b))
         = fromLazyText a `mappend`
             case TL.uncons b of
               Nothing      ->  mempty
-              Just (c,b')  ->  fromWrite (quoteChar c) `mappend`
-                                 loop (splitQ b')
+              Just (c,b')  ->  quoteChar c `mappend` loop b'
 
 instance Value TL.Text where
   toBuilder = toBuilder . escape
@@ -247,8 +235,8 @@ instance Value TL.Text where
 instance Key [Char] where
   escape str = Escaped (fromWriteList writeEscapedChar str)
     where
-      writeEscapedChar c | quoteNeeded c = quoteChar c
-                         | otherwise     = writeChar c
+      writeEscapedChar c | quoteNeeded c = quoteCharW c
+                         | otherwise     = writeChar  c
 
 instance Value [Char] where
   toBuilder = toBuilder . escape
@@ -270,16 +258,27 @@ quoteNeeded :: Char -> Bool
 quoteNeeded c = c == '\\' || c == '"' || Char.ord c < 0x20
 {-# INLINE quoteNeeded #-}
 
-quoteChar :: Char -> Write
+quoteChar :: Char -> Builder
 quoteChar c = case c of
-                '\\'  ->  writeByteString "\\\\"
-                '"'   ->  writeByteString "\\\""
-                '\b'  ->  writeByteString "\\b"
-                '\f'  ->  writeByteString "\\f"
-                '\n'  ->  writeByteString "\\n"
-                '\r'  ->  writeByteString "\\r"
-                '\t'  ->  writeByteString "\\t"
-                _     ->  hexEscape c
+                 '\\'  ->  copyByteString "\\\\"
+                 '"'   ->  copyByteString "\\\""
+                 '\b'  ->  copyByteString "\\b"
+                 '\f'  ->  copyByteString "\\f"
+                 '\n'  ->  copyByteString "\\n"
+                 '\r'  ->  copyByteString "\\r"
+                 '\t'  ->  copyByteString "\\t"
+                 _     ->  fromWrite (hexEscape c)
+
+quoteCharW :: Char -> Write
+quoteCharW c = case c of
+                 '\\'  ->  writeByteString "\\\\"
+                 '"'   ->  writeByteString "\\\""
+                 '\b'  ->  writeByteString "\\b"
+                 '\f'  ->  writeByteString "\\f"
+                 '\n'  ->  writeByteString "\\n"
+                 '\r'  ->  writeByteString "\\r"
+                 '\t'  ->  writeByteString "\\t"
+                 _     ->  hexEscape c
 
 hexEscape  :: Char -> Write
 hexEscape  (c2w -> c)
