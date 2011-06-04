@@ -27,6 +27,8 @@ module Data.Json.Builder
      , Escaped(..)
      ) where
 
+import           Prelude hiding ((++))
+
 import           Blaze.ByteString.Builder as Blaze
                    ( Write
                    , Builder
@@ -71,7 +73,16 @@ class Value a => Key a where
 -- into valid json syntax.
 
 class Value a where
-  toBuilder        :: a -> Blaze.Builder
+  toJson           :: a -> Json
+
+newtype  Json = Json Builder 
+
+instance Value Json where
+  toJson = id
+
+(++) :: Monoid a => a -> a -> a
+(++) = mappend
+infixr 5 ++
 
 -- | The 'Escaped' type is a special Builder value that represents a UTF-8
 -- encoded string with all necessary characters json-escaped.  These builders
@@ -81,19 +92,19 @@ class Value a where
 -- strings (which might require some kind of conversion in addition to
 -- concatination.)
 
-newtype Escaped = Escaped Blaze.Builder deriving (Monoid)
+newtype Escaped = Escaped Builder deriving (Monoid)
 
 instance Key Escaped where
   escape = id
 
 instance Value Escaped where
-  toBuilder (Escaped str) = fromChar '"' `mappend` str `mappend` fromChar '"'
+  toJson (Escaped str) = Json (fromChar '"' ++ str ++ fromChar '"')
 
-type CommaTracker = (Bool -> Blaze.Builder) -> Bool -> Blaze.Builder
+type CommaTracker = (Bool -> Builder) -> Bool -> Builder
 
-comma :: Blaze.Builder -> CommaTracker
-comma b f True  =                        b `mappend` f False
-comma b f False = fromChar ',' `mappend` b `mappend` f False
+comma :: Builder -> CommaTracker
+comma b f True  =                 b ++ f False
+comma b f False = fromChar ',' ++ b ++ f False
 {-# INLINE comma #-}
 
 -- |  The 'Object' type represents a builder that constructs syntax for a
@@ -105,11 +116,14 @@ comma b f False = fromChar ',' `mappend` b `mappend` f False
 newtype Object = Object CommaTracker
 
 instance Value Object where
-  toBuilder (Object f) = fromChar '{' `mappend` f (\_ -> fromChar '}') True
+  toJson (Object f) = Json (fromChar '{' ++ f (\_ -> fromChar '}') True)
 
 instance Monoid Object where
   mempty = Object id
   mappend (Object f) (Object g) = Object (f . g)
+
+toBuilder x = case toJson x of
+                Json y -> y
 
 -- | The 'row' constructs a json object consisting of exactly one field.
 -- These objects can be concatinated using 'mappend'.
@@ -125,7 +139,7 @@ row k a = Object syntax
 newtype Array = Array CommaTracker
 
 instance Value Array where
-  toBuilder (Array f) = fromChar '[' `mappend` f (\_ -> fromChar ']') True
+  toJson (Array f) = Json (fromChar '[' ++ f (\_ -> fromChar ']') True)
 
 instance Monoid Array where
   mempty = Array id
@@ -139,98 +153,98 @@ element a = Array $ comma (toBuilder a)
 -- Primitive instances for json-builder
 
 instance Value () where
-  toBuilder _ = copyByteString "null"
+  toJson _ = Json (copyByteString "null")
 
 instance Value Int     where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Int8    where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Int16   where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Int32   where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Int64   where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Integer where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Word    where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Word8   where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Word16  where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Word32  where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Word64  where
-  toBuilder = integral
+  toJson = Json . integral
 
 instance Value Double where
-  toBuilder = double
+  toJson = Json . double
 
 instance Value Float where
-  toBuilder = float
+  toJson = Json . float
 
 instance Value Bool where
-  toBuilder True  = copyByteString "true"
-  toBuilder False = copyByteString "false"
+  toJson True  = Json (copyByteString "true")
+  toJson False = Json (copyByteString "false")
 
 instance Key BS.ByteString where
   escape x = Escaped (loop x)
     where
       loop (BU.break quoteNeeded -> (a,b))
-        = fromByteString a `mappend`
+        = fromByteString a ++
             case BU.decode b of
               Nothing     ->  mempty
-              Just (c,n)  ->  quoteChar c `mappend` loop (BS.drop n b)
+              Just (c,n)  ->  quoteChar c ++ loop (BS.drop n b)
 
 instance Value BS.ByteString where
-  toBuilder = toBuilder . escape
+  toJson = toJson . escape
 
 instance Key BL.ByteString where
   escape x = Escaped (loop x)
     where
       loop (BLU.break quoteNeeded -> (a,b))
-        = fromLazyByteString a `mappend`
+        = fromLazyByteString a ++
             case BLU.decode b of
               Nothing     ->  mempty
-              Just (c,n)  ->  quoteChar c `mappend` loop (BL.drop n b)
+              Just (c,n)  ->  quoteChar c ++ loop (BL.drop n b)
 
 instance Value BL.ByteString where
-  toBuilder = toBuilder . escape
+  toJson = toJson . escape
 
 instance Key T.Text where
   escape x = Escaped (loop x)
     where
       loop (T.break quoteNeeded -> (a,b))
-        = fromText a `mappend`
+        = fromText a ++
             case T.uncons b of
               Nothing      ->  mempty
-              Just (c,b')  ->  quoteChar c `mappend` loop b'
+              Just (c,b')  ->  quoteChar c ++ loop b'
 
 instance Value T.Text where
-  toBuilder = toBuilder . escape
+  toJson = toJson . escape
 
 instance Key TL.Text where
   escape x = Escaped (loop x)
     where
       loop (TL.break quoteNeeded -> (a,b))
-        = fromLazyText a `mappend`
+        = fromLazyText a ++
             case TL.uncons b of
               Nothing      ->  mempty
-              Just (c,b')  ->  quoteChar c `mappend` loop b'
+              Just (c,b')  ->  quoteChar c ++ loop b'
 
 instance Value TL.Text where
-  toBuilder = toBuilder . escape
+  toJson = toJson . escape
 
 instance Key [Char] where
   escape str = Escaped (fromWriteList writeEscapedChar str)
@@ -239,18 +253,16 @@ instance Key [Char] where
                          | otherwise     = writeChar  c
 
 instance Value [Char] where
-  toBuilder = toBuilder . escape
+  toJson = toJson . escape
 
 instance Value a => Value [a] where
-  toBuilder = toBuilder . mconcat . map element
+  toJson = toJson . mconcat . map element
 
 instance (Key k, Value a) => Value (Map.Map k a) where
-  toBuilder = toBuilder
-            . Map.foldrWithKey (\k a b -> row k a `mappend` b) mempty
+  toJson = toJson . Map.foldrWithKey     (\k a b -> row k a ++ b) mempty
 
 instance (Key k, Value a) => Value (HashMap.HashMap k a) where
-  toBuilder = toBuilder
-            . HashMap.foldrWithKey (\k a b -> row k a `mappend` b) mempty
+  toJson = toJson . HashMap.foldrWithKey (\k a b -> row k a ++ b) mempty
 
 ------------------------------------------------------------------------------
 
@@ -283,8 +295,8 @@ quoteCharW c = case c of
 hexEscape  :: Char -> Write
 hexEscape  (c2w -> c)
   = writeByteString "\\u00"
-    `mappend` writeWord8 (char ((c `shiftR` 4) .&. 0xF))
-    `mappend` writeWord8 (char ( c             .&. 0xF))
+    ++ writeWord8 (char ((c `shiftR` 4) .&. 0xF))
+    ++ writeWord8 (char ( c             .&. 0xF))
 
 char :: Word8 -> Word8
 char i | i < 10    = i + 48
