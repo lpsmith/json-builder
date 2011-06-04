@@ -1,5 +1,5 @@
 Name:                json-builder
-Version:             0.0.1
+Version:             0.1.0
 Synopsis:            Data structure agnostic JSON serialization
 License:             BSD3
 License-file:        LICENSE
@@ -26,6 +26,7 @@ description:
 Library
   hs-source-dirs: src
   Exposed-modules:     Data.Json.Builder
+                       Data.Json.Builder.Internal
 
   Build-depends:       base >= 4 && < 5,
                        blaze-builder,
@@ -43,4 +44,4 @@ source-repository head
 source-repository this
   type:     git
   location: http://github.com/lpsmith/json-builder
-  tag:      v0.0.1
+  tag:      v0.1.0

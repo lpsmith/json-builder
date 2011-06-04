@@ -10,21 +10,24 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE BangPatterns               #-}
-{-# LANGUAGE ViewPatterns               #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE IncoherentInstances        #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE BangPatterns        #-}
+{-# LANGUAGE ViewPatterns        #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE FlexibleInstances   #-}
+{-# LANGUAGE IncoherentInstances #-}
 
 module Data.Json.Builder
-     ( Key  (..)
-     , Value(..)
-     , Object
-     , row
+     ( Value(toJson)
+     , Json
+     , toBuilder
+     , toJsonByteString
+     , toJsonLazyByteString
      , Array
      , element
-     , Escaped(..)
+     , Object
+     , row
+     , JsString(escape)
+     , Escaped
      ) where
 
 import           Prelude hiding ((++))
@@ -38,7 +41,9 @@ import           Blaze.ByteString.Builder as Blaze
                    , writeByteString
                    , fromWrite
                    , fromWriteList
-                   , writeWord8         )
+                   , writeWord8
+                   , toByteString
+                   , toLazyByteString    )
 import           Blaze.ByteString.Builder.Char.Utf8
                    ( fromChar, writeChar, fromText, fromLazyText )
 import           Blaze.Text (float, double, integral)
@@ -62,43 +67,23 @@ import qualified Data.Text.Lazy         as TL
 
 import qualified Data.HashMap.Lazy      as HashMap
 
--- | The 'Key' typeclass represents types that are rendered
--- into json strings.  They are special because only strings
--- can appear as field names of a json objects.
-
-class Value a => Key a where
-  escape           :: a -> Escaped
-
--- | The 'Value' typeclass represents types that can be rendered
--- into valid json syntax.
-
-class Value a where
-  toJson           :: a -> Json
-
-newtype  Json = Json Builder 
-
-instance Value Json where
-  toJson = id
+import           Data.Json.Builder.Internal
 
 (++) :: Monoid a => a -> a -> a
 (++) = mappend
 infixr 5 ++
 
--- | The 'Escaped' type is a special Builder value that represents a UTF-8
--- encoded string with all necessary characters json-escaped.  These builders
--- must not render the opening or closing quotes,  which are instead rendered
--- by 'toBuilder'.  This is so that Json strings can be efficiently constructed
--- from multiple Haskell strings without actually concatinating the Haskell
--- strings (which might require some kind of conversion in addition to
--- concatination.)
+toBuilder :: Value a => a -> Builder
+toBuilder x = case toJson x of
+                Json y -> y
+{-# SPECIALIZE toBuilder :: Json -> Builder #-}
+{-# INLINE toBuilder #-}
 
-newtype Escaped = Escaped Builder deriving (Monoid)
+toJsonByteString     :: Value a => a -> BS.ByteString
+toJsonByteString     = toByteString     . toBuilder
 
-instance Key Escaped where
-  escape = id
-
-instance Value Escaped where
-  toJson (Escaped str) = Json (fromChar '"' ++ str ++ fromChar '"')
+toJsonLazyByteString :: Value a => a -> BL.ByteString
+toJsonLazyByteString = toLazyByteString . toBuilder
 
 type CommaTracker = (Bool -> Builder) -> Bool -> Builder
 
@@ -107,11 +92,13 @@ comma b f True  =                 b ++ f False
 comma b f False = fromChar ',' ++ b ++ f False
 {-# INLINE comma #-}
 
--- |  The 'Object' type represents a builder that constructs syntax for a
--- json object.  It has a singleton constructor 'row', and an instance of
--- monoid, so that arbitrary objects can be constructed.  Note that
--- duplicate field names will appear in the output, so it is up to the
--- user of this interface to avoid duplicate field names.
+-- |  The 'Object' type represents syntax for a json object.  It has a singleton
+-- constructor 'row', and an instance of 'Monoid', so that 'mempty' represents the
+-- empty object and 'mappend' concatinates two objects.  Arbitrary objects can
+-- be constructed using these operators.
+--
+-- Note that duplicate field names will appear in the output, so it is up
+-- to the user of this interface to avoid duplicate field names.
 
 newtype Object = Object CommaTracker
 
@@ -122,19 +109,17 @@ instance Monoid Object where
   mempty = Object id
   mappend (Object f) (Object g) = Object (f . g)
 
-toBuilder x = case toJson x of
-                Json y -> y
-
--- | The 'row' constructs a json object consisting of exactly one field.
--- These objects can be concatinated using 'mappend'.
-row :: (Key k, Value a) => k -> a -> Object
+-- |  The 'row' function constructs a json object consisting of exactly
+-- one field.  These objects can be concatinated using 'mappend'.
+row :: (JsString k, Value a) => k -> a -> Object
 row k a = Object syntax
   where
     syntax = comma (mconcat [ toBuilder k, fromChar ':',  toBuilder a ])
 
--- |  The 'Array' type represents a builder that constructs syntax for a
--- json array.  It has a singleton constructor 'element' and an instance of
--- monoid, so that arbitrary arrays can be constructed.
+-- |  The 'Array' type represents syntax for a json array.  It has been given
+-- a singleton constructor 'element' and an instance of 'Monoid',  so that
+-- 'mempty' represents the empty array and 'mappend' concatinates two arrays.
+-- Arbitrary arrays can be constructed using these operators.
 
 newtype Array = Array CommaTracker
 
@@ -152,6 +137,7 @@ element a = Array $ comma (toBuilder a)
 
 -- Primitive instances for json-builder
 
+-- | renders as @null@
 instance Value () where
   toJson _ = Json (copyByteString "null")
 
@@ -194,11 +180,13 @@ instance Value Double where
 instance Value Float where
   toJson = Json . float
 
+-- | renders as @true@ or @false@
+
 instance Value Bool where
   toJson True  = Json (copyByteString "true")
   toJson False = Json (copyByteString "false")
 
-instance Key BS.ByteString where
+instance JsString BS.ByteString where
   escape x = Escaped (loop x)
     where
       loop (BU.break quoteNeeded -> (a,b))
@@ -210,7 +198,7 @@ instance Key BS.ByteString where
 instance Value BS.ByteString where
   toJson = toJson . escape
 
-instance Key BL.ByteString where
+instance JsString BL.ByteString where
   escape x = Escaped (loop x)
     where
       loop (BLU.break quoteNeeded -> (a,b))
@@ -222,7 +210,7 @@ instance Key BL.ByteString where
 instance Value BL.ByteString where
   toJson = toJson . escape
 
-instance Key T.Text where
+instance JsString T.Text where
   escape x = Escaped (loop x)
     where
       loop (T.break quoteNeeded -> (a,b))
@@ -234,7 +222,7 @@ instance Key T.Text where
 instance Value T.Text where
   toJson = toJson . escape
 
-instance Key TL.Text where
+instance JsString TL.Text where
   escape x = Escaped (loop x)
     where
       loop (TL.break quoteNeeded -> (a,b))
@@ -246,7 +234,7 @@ instance Key TL.Text where
 instance Value TL.Text where
   toJson = toJson . escape
 
-instance Key [Char] where
+instance JsString [Char] where
   escape str = Escaped (fromWriteList writeEscapedChar str)
     where
       writeEscapedChar c | quoteNeeded c = quoteCharW c
@@ -255,13 +243,16 @@ instance Key [Char] where
 instance Value [Char] where
   toJson = toJson . escape
 
+-- | renders as an 'Array'
 instance Value a => Value [a] where
   toJson = toJson . mconcat . map element
 
-instance (Key k, Value a) => Value (Map.Map k a) where
+-- | renders as an 'Object'
+instance (JsString k, Value a) => Value (Map.Map k a) where
   toJson = toJson . Map.foldrWithKey     (\k a b -> row k a ++ b) mempty
 
-instance (Key k, Value a) => Value (HashMap.HashMap k a) where
+-- | renders as an 'Object'
+instance (JsString k, Value a) => Value (HashMap.HashMap k a) where
   toJson = toJson . HashMap.foldrWithKey (\k a b -> row k a ++ b) mempty
 
 ------------------------------------------------------------------------------
