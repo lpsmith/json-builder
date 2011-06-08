@@ -106,7 +106,8 @@ data CommaMonoid
 
 instance Monoid CommaMonoid where
   mempty = Empty
-  mappend Empty y = y
-  mappend x Empty = x
-  mappend (Comma a) (Comma b)
-        = Comma (a ++ fromChar ',' ++ b)
+  mappend Empty     x = x
+  mappend (Comma a) x
+        = Comma (a ++ case x of
+                        Empty   -> mempty
+                        Comma b -> fromChar ',' ++ b)
