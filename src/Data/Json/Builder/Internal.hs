@@ -10,6 +10,7 @@
 -- invalid Json syntax the constructors provided in this module.
 -----------------------------------------------------------------------------
 
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Json.Builder.Internal
@@ -17,6 +18,9 @@ module Data.Json.Builder.Internal
      , Json    (..)
      , JsString(..)
      , Escaped (..)
+     , Object(..)
+     , Array(..)
+     , CommaMonoid(..)
      ) where
 
 import Prelude hiding ((++))
@@ -24,6 +28,7 @@ import Prelude hiding ((++))
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char.Utf8 ( fromChar )
 import Data.ByteString(ByteString)
+import Data.ByteString.Char8()
 import Data.Monoid
 
 (++) :: Monoid a => a -> a -> a
@@ -69,3 +74,39 @@ instance Value    Escaped where
 instance JsString Escaped where
   escape = id
 
+-- |  The 'Object' type represents syntax for a json object.  It has a singleton
+-- constructor 'row', and an instance of 'Monoid', so that 'mempty' represents the
+-- empty object and 'mappend' concatinates two objects.  Arbitrary objects can
+-- be constructed using these operators.
+--
+-- Note that duplicate field names will appear in the output, so it is up
+-- to the user of this interface to avoid duplicate field names.
+newtype Object = Object CommaMonoid deriving (Monoid)
+
+instance Value Object where
+  toJson (Object xs) = case xs of
+                         Empty    -> Json (copyByteString "{}")
+                         Comma ys -> Json (fromChar '{' ++ ys ++ fromChar '}')
+
+-- |  The 'Array' type represents syntax for a json array.  It has been given
+-- a singleton constructor 'element' and an instance of 'Monoid',  so that
+-- 'mempty' represents the empty array and 'mappend' concatinates two arrays.
+-- Arbitrary arrays can be constructed using these operators.
+
+newtype Array = Array CommaMonoid deriving (Monoid)
+
+instance Value Array where
+  toJson (Array xs) = case xs of
+                        Empty     -> Json (copyByteString "[]")
+                        Comma  ys -> Json (fromChar '[' ++ ys ++ fromChar ']')
+
+data CommaMonoid
+   = Empty
+   | Comma Builder
+
+instance Monoid CommaMonoid where
+  mempty = Empty
+  mappend Empty y = y
+  mappend x Empty = x
+  mappend (Comma a) (Comma b)
+        = Comma (a ++ fromChar ',' ++ b)

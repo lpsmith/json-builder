@@ -85,55 +85,15 @@ toJsonByteString     = toByteString     . toBuilder
 toJsonLazyByteString :: Value a => a -> BL.ByteString
 toJsonLazyByteString = toLazyByteString . toBuilder
 
-type CommaTracker = (Bool -> Builder) -> Bool -> Builder
-
-comma :: Builder -> CommaTracker
-comma b f True  =                 b ++ f False
-comma b f False = fromChar ',' ++ b ++ f False
-{-# INLINE comma #-}
-
--- |  The 'Object' type represents syntax for a json object.  It has a singleton
--- constructor 'row', and an instance of 'Monoid', so that 'mempty' represents the
--- empty object and 'mappend' concatinates two objects.  Arbitrary objects can
--- be constructed using these operators.
---
--- Note that duplicate field names will appear in the output, so it is up
--- to the user of this interface to avoid duplicate field names.
-
-newtype Object = Object CommaTracker
-
-instance Value Object where
-  toJson (Object f) = Json (fromChar '{' ++ f (\_ -> fromChar '}') True)
-
-instance Monoid Object where
-  mempty = Object id
-  mappend (Object f) (Object g) = Object (f . g)
-
 -- |  The 'row' function constructs a json object consisting of exactly
 -- one field.  These objects can be concatinated using 'mappend'.
 row :: (JsString k, Value a) => k -> a -> Object
-row k a = Object syntax
-  where
-    syntax = comma (mconcat [ toBuilder k, fromChar ':',  toBuilder a ])
-
--- |  The 'Array' type represents syntax for a json array.  It has been given
--- a singleton constructor 'element' and an instance of 'Monoid',  so that
--- 'mempty' represents the empty array and 'mappend' concatinates two arrays.
--- Arbitrary arrays can be constructed using these operators.
-
-newtype Array = Array CommaTracker
-
-instance Value Array where
-  toJson (Array f) = Json (fromChar '[' ++ f (\_ -> fromChar ']') True)
-
-instance Monoid Array where
-  mempty = Array id
-  mappend (Array f) (Array g) = Array (f . g)
+row   k a = Object (Comma (toBuilder k ++ fromChar ':' ++ toBuilder a))
 
 -- |  The 'element' function constructs a json array consisting of exactly
 -- one value.  These arrays can be concatinated using 'mappend'.
 element :: Value a => a -> Array
-element a = Array $ comma (toBuilder a)
+element a = Array  (Comma (toBuilder a))
 
 -- Primitive instances for json-builder
 
