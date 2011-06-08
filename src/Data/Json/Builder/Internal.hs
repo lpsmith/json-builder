@@ -102,7 +102,7 @@ instance Value Array where
 
 data CommaMonoid
    = Empty
-   | Comma Builder
+   | Comma !Builder
 
 instance Monoid CommaMonoid where
   mempty = Empty
