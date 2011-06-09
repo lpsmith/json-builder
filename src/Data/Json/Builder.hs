@@ -30,6 +30,7 @@ module Data.Json.Builder
      , Escaped
      , JsArray(toArray)
      , JsObject(toObject)
+     , Monoid(mempty, mappend, mconcat)
      ) where
 
 import           Prelude hiding ((++))
@@ -78,8 +79,14 @@ infixr 5 ++
 class JsObject a where
   toObject :: a -> Object
 
+instance JsObject Object where
+  toObject = id
+
 class JsArray a where
   toArray  :: a -> Array
+
+instance JsArray Array where
+  toArray = id
 
 toBuilder :: Value a => a -> Builder
 toBuilder x = case toJson x of
