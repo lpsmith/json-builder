@@ -20,14 +20,16 @@ module Data.Json.Builder
      ( Value(toJson)
      , Json
      , toBuilder
-     , toJsonByteString
-     , toJsonLazyByteString
+     , toJsonBS
+     , toJsonLBS
      , Array
      , element
      , Object
      , row
      , JsString(escape)
      , Escaped
+     , JsArray(toArray)
+     , JsObject(toObject)
      ) where
 
 import           Prelude hiding ((++))
@@ -73,17 +75,23 @@ import           Data.Json.Builder.Internal
 (++) = mappend
 infixr 5 ++
 
+class JsObject a where
+  toObject :: a -> Object
+
+class JsArray a where
+  toArray  :: a -> Array
+
 toBuilder :: Value a => a -> Builder
 toBuilder x = case toJson x of
                 Json y -> y
 {-# SPECIALIZE toBuilder :: Json -> Builder #-}
 {-# INLINE toBuilder #-}
 
-toJsonByteString     :: Value a => a -> BS.ByteString
-toJsonByteString     = toByteString     . toBuilder
+toJsonBS  :: Value a => a -> BS.ByteString
+toJsonBS  = toByteString     . toBuilder
 
-toJsonLazyByteString :: Value a => a -> BL.ByteString
-toJsonLazyByteString = toLazyByteString . toBuilder
+toJsonLBS :: Value a => a -> BL.ByteString
+toJsonLBS = toLazyByteString . toBuilder
 
 -- |  The 'row' function constructs a json object consisting of exactly
 -- one field.  These objects can be concatinated using 'mappend'.
@@ -209,15 +217,24 @@ instance Value [Char] where
 
 -- | renders as an 'Array'
 instance Value a => Value [a] where
-  toJson = toJson . mconcat . map element
+  toJson = toJson . toArray
+
+instance Value a => JsArray [a] where
+  toArray = foldr (\a as -> element a ++ as) mempty
 
 -- | renders as an 'Object'
 instance (JsString k, Value a) => Value (Map.Map k a) where
-  toJson = toJson . Map.foldrWithKey     (\k a b -> row k a ++ b) mempty
+  toJson = toJson . toObject
+
+instance (JsString k, Value a) => JsObject (Map.Map k a) where
+  toObject = Map.foldrWithKey     (\k a b -> row k a ++ b) mempty
 
 -- | renders as an 'Object'
 instance (JsString k, Value a) => Value (HashMap.HashMap k a) where
-  toJson = toJson . HashMap.foldrWithKey (\k a b -> row k a ++ b) mempty
+  toJson = toJson . toObject
+
+instance (JsString k, Value a) => JsObject (HashMap.HashMap k a) where
+  toObject = HashMap.foldrWithKey (\k a b -> row k a ++ b) mempty
 
 ------------------------------------------------------------------------------
 
