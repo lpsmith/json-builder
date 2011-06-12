@@ -6,28 +6,33 @@
 --
 -- Maintainer  :  Leon P Smith <leon@melding-monads.com>
 --
--- Internal bits.   You can break this library's abstraction and emit
--- invalid Json syntax the constructors provided in this module.
+-- Internal bits.   By using the constructors provided in this module,
+-- you can break the abstraction that json-builder provides and emit invalid
+-- JSON syntax.   Also, this module is not as stable as the public interface
+-- and can change at any time.
+--
 -----------------------------------------------------------------------------
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Json.Builder.Internal
-     ( Value   (..)
-     , Json    (..)
-     , JsString(..)
+     ( Json    (..)
+     , Object  (..)
+     , Array   (..)
+     , Value   (..)
      , Escaped (..)
-     , Object(..)
-     , Array(..)
+     , JsString(..)
      , CommaMonoid(..)
      ) where
 
 import Prelude hiding ((++))
 
 import Blaze.ByteString.Builder
-import Blaze.ByteString.Builder.Char.Utf8 ( fromChar )
-import Data.ByteString(ByteString)
+import Blaze.ByteString.Builder.Char.Utf8  ( fromChar )
+import qualified Blaze.ByteString.Builder.Char.Utf8 as Blaze  ( fromString )
+import Data.String  ( fromString )
+import Data.ByteString  ( ByteString )
 import Data.ByteString.Char8()
 import Data.Monoid
 
@@ -42,15 +47,16 @@ class Value a where
   toJson :: a -> Json
 
 -- | The 'Json' type represents valid json syntax.  It cannot be directly
--- analyzed, however it can be rendered into a 'ByteString' and used to
--- as a component of an array or an object to build a bigger json value.
+-- analyzed, however it can be turned into a 'Builder' via 'toBuilder',
+-- a (lazy) 'ByteString' via 'toJsonBS' or 'toJsonLBS',  or used as a component
+-- of a json 'Array' or json 'Object' using 'element' or 'row'.
 
 newtype Json = Json Builder
 
 instance Value Json where
   toJson = id
 
--- | The 'String' typeclass represents types that render into json string
+-- | The 'JsString' typeclass represents types that can be render into json string
 -- syntax.  They are special because only strings can appear as field names
 -- of json objects.
 
@@ -99,6 +105,18 @@ instance Value Array where
   toJson (Array xs) = case xs of
                         Empty     -> Json (copyByteString "[]")
                         Comma  ys -> Json (fromChar '[' ++ ys ++ fromChar ']')
+
+-- | A 'CommaMonoid' inserts commas between builders.  In order to
+-- satisify the 'Monoid' identity laws,  'Empty' must be distinguished
+-- from @'Comma' 'mempty'@.  To demonstrate the difference:
+--
+-- @
+-- mconcat [\"foo\", Comma mempty, \"bar\"]  ==  \"foo,,bar\"
+-- mconcat [\"foo\", Empty       , \"bar\"]  ==  \"foo,bar\"
+-- @
+--
+-- Note that this example abuses notation somewhat, treating Builders as
+-- strings using the injection @'fromString' = Comma . 'Blaze.fromString'@
 
 data CommaMonoid
    = Empty

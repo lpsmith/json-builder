@@ -17,19 +17,24 @@
 {-# LANGUAGE IncoherentInstances #-}
 
 module Data.Json.Builder
-     ( Value(toJson)
-     , Json
+     ( -- * Json Values
+       Json
      , toBuilder
      , toJsonBS
      , toJsonLBS
+     , Value(toJson)
+       -- * Json Arrays @[\"foobar\",true,42]@
      , Array
      , element
+     , JsArray(toArray)
+       -- * Json Objects @{\"x\":3.14,\"y\":-2.7}@
      , Object
      , row
-     , JsString(escape)
-     , Escaped
-     , JsArray(toArray)
      , JsObject(toObject)
+       -- * Json Strings
+     , Escaped
+     , JsString(escape)
+       -- * Monoid (from @Data.Monoid@)
      , Monoid(mempty, mappend, mconcat)
      ) where
 
