@@ -62,8 +62,6 @@ import           Data.Monoid ( Monoid (mempty, mappend, mconcat) )
 import           Data.Int    ( Int8, Int16, Int32, Int64)
 import           Data.Word   ( Word, Word8, Word16, Word32, Word64 )
 
-import qualified Data.Char              as Char
-
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as BU
@@ -251,7 +249,7 @@ instance (JsString k, Value a) => JsObject (HashMap.HashMap k a) where
 ------------------------------------------------------------------------------
 
 quoteNeeded :: Char -> Bool
-quoteNeeded c = c == '\\' || c == '"' || Char.ord c < 0x20
+quoteNeeded c = c == '\\' || c == '"' || c < '\x20'
 {-# INLINE quoteNeeded #-}
 
 quoteChar :: Char -> Builder
