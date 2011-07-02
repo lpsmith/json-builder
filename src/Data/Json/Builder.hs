@@ -66,7 +66,7 @@ import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as BU
 import qualified Data.ByteString.Lazy.UTF8 as BLU
-import           Data.ByteString.Internal ( c2w )
+import           Data.ByteString.Internal ( c2w,w2c )
 
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
@@ -279,6 +279,7 @@ hexEscape  (c2w -> c)
   = writeByteString "\\u00"
     ++ writeWord8 (char ((c `shiftR` 4) .&. 0xF))
     ++ writeWord8 (char ( c             .&. 0xF))
+{-# INLINE hexEscape #-}
 
 char :: Word8 -> Word8
 char i | i < 10    = i + 48
