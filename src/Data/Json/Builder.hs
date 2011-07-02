@@ -66,7 +66,7 @@ import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BL
 import qualified Data.ByteString.UTF8   as BU
 import qualified Data.ByteString.Lazy.UTF8 as BLU
-import           Data.ByteString.Internal ( c2w,w2c )
+import           Data.ByteString.Internal ( c2w )
 
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
@@ -161,8 +161,7 @@ instance Value Float where
 -- | renders as @true@ or @false@
 
 instance Value Bool where
-  toJson True  = Json (copyByteString "true")
-  toJson False = Json (copyByteString "false")
+  toJson x = Json (fromByteString $! if x then "true" else "false")
 
 -- | must be UTF-8 encoded
 
