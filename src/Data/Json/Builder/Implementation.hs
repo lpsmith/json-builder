@@ -105,7 +105,7 @@ instance JsString Escaped where
   escape = id
 
 -- | The 'Object' type represents syntax for a json object.  It has a singleton
--- constructor 'row', and an instance of 'Monoid', so that 'mempty' represents 
+-- constructor 'row', and an instance of 'Monoid', so that 'mempty' represents
 -- the empty object and 'mappend' concatinates two objects.  Arbitrary objects
 -- can be constructed using these operators.
 --
