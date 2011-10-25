@@ -71,7 +71,7 @@ class Value a where
 
 -- | The 'Json' type represents valid json syntax.  It cannot be directly
 -- analyzed, however it can be turned into a 'Builder' via 'toBuilder',
--- a (lazy) 'ByteString' via 'toJsonBS' or 'toJsonLBS',  or used as a component
+-- a (lazy) 'BS.ByteString' via 'toJsonBS' or 'toJsonLBS',  or used as a component
 -- of a json 'Array' or json 'Object' using 'element' or 'row'.
 
 newtype Json = Json Builder
@@ -162,8 +162,8 @@ element a = Array  (Comma (toBuilder a))
 -- @
 --
 -- The strings in this example denote @CommaMonoids@ via
--- @'fromString' = Comma . 'Blaze.fromString'@.  Thus @\"\"@ is 
--- equivalent to @Comma mempty@.
+-- @'fromString' = Comma . 'Builder.fromString'@.  Thus @\"\"@ is equivalent
+-- to @Comma mempty@.
 
 data CommaMonoid
    = Empty
