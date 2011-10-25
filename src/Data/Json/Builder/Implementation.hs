@@ -6,7 +6,7 @@
 --
 -- Maintainer  :  Leon P Smith <leon@melding-monads.com>
 --
--- This module contains all definitions for the library.  Different 
+-- This module contains all definitions for the library.  Different
 -- subsets are exported by Data.Json.Builder and Data.Json.Builder.Internal.
 --
 -----------------------------------------------------------------------------
@@ -71,8 +71,8 @@ class Value a where
 
 -- | The 'Json' type represents valid json syntax.  It cannot be directly
 -- analyzed, however it can be turned into a 'Builder' via 'toBuilder',
--- a (lazy) 'BS.ByteString' via 'toJsonBS' or 'toJsonLBS',  or used as a component
--- of a json 'Array' or json 'Object' using 'element' or 'row'.
+-- a (lazy) 'BS.ByteString' via 'toJsonBS' or 'toJsonLBS',  or used as a
+-- component of a json 'Array' or json 'Object' using 'element' or 'row'.
 
 newtype Json = Json Builder
 
@@ -94,9 +94,9 @@ newtype Escaped = Escaped Builder deriving (Monoid)
 instance Value    Escaped where
   toJson (Escaped str) = Json (fromChar '"' ++ str ++ fromChar '"')
 
--- | The 'JsString' typeclass represents types that can be render into json string
--- syntax.  They are special because only strings can appear as field names
--- of json objects.
+-- | The 'JsString' typeclass represents types that can be render into json
+-- string syntax.  They are special because only strings can appear as field
+-- names of json objects.
 
 class Value a => JsString a where
   escape :: a -> Escaped
@@ -104,10 +104,10 @@ class Value a => JsString a where
 instance JsString Escaped where
   escape = id
 
--- |  The 'Object' type represents syntax for a json object.  It has a singleton
--- constructor 'row', and an instance of 'Monoid', so that 'mempty' represents the
--- empty object and 'mappend' concatinates two objects.  Arbitrary objects can
--- be constructed using these operators.
+-- | The 'Object' type represents syntax for a json object.  It has a singleton
+-- constructor 'row', and an instance of 'Monoid', so that 'mempty' represents 
+-- the empty object and 'mappend' concatinates two objects.  Arbitrary objects
+-- can be constructed using these operators.
 --
 -- Note that duplicate field names will appear in the output, so it is up
 -- to the user of this interface to avoid duplicate field names.
