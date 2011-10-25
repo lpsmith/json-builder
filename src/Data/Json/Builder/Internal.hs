@@ -13,16 +13,11 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-
 module Data.Json.Builder.Internal
      ( Json    (..)
      , Object  (..)
      , Array   (..)
-     , Value   (..)
      , Escaped (..)
-     , JsString(..)
      , CommaMonoid(..)
      ) where
 
