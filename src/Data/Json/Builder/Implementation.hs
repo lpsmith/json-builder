@@ -11,11 +11,11 @@
 --
 -----------------------------------------------------------------------------
 
-{-# LANGUAGE BangPatterns        #-}
-{-# LANGUAGE ViewPatterns        #-}
-{-# LANGUAGE OverloadedStrings   #-}
-{-# LANGUAGE FlexibleInstances   #-}
-{-# LANGUAGE IncoherentInstances #-}
+{-# LANGUAGE BangPatterns               #-}
+{-# LANGUAGE ViewPatterns               #-}
+{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE IncoherentInstances        #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Data.Json.Builder.Implementation where
@@ -79,12 +79,6 @@ newtype Json = Json Builder
 instance Value Json where
   toJson = id
 
--- | The 'JsString' typeclass represents types that can be render into json string
--- syntax.  They are special because only strings can appear as field names
--- of json objects.
-
-class Value a => JsString a where
-  escape :: a -> Escaped
 
 -- | The 'Escaped' type represents json string syntax.  The purpose of this
 -- type is so that json strings can be efficiently constructed from multiple
@@ -99,6 +93,13 @@ newtype Escaped = Escaped Builder deriving (Monoid)
 
 instance Value    Escaped where
   toJson (Escaped str) = Json (fromChar '"' ++ str ++ fromChar '"')
+
+-- | The 'JsString' typeclass represents types that can be render into json string
+-- syntax.  They are special because only strings can appear as field names
+-- of json objects.
+
+class Value a => JsString a where
+  escape :: a -> Escaped
 
 instance JsString Escaped where
   escape = id
@@ -117,6 +118,17 @@ instance Value Object where
                          Empty    -> Json (copyByteString "{}")
                          Comma ys -> Json (fromChar '{' ++ ys ++ fromChar '}')
 
+class JsObject a where
+  toObject :: a -> Object
+
+instance JsObject Object where
+  toObject = id
+
+-- |  The 'row' function constructs a json object consisting of exactly
+-- one field.  These objects can be concatinated using 'mappend'.
+row :: (JsString k, Value a) => k -> a -> Object
+row   k a = Object (Comma (toBuilder k ++ fromChar ':' ++ toBuilder a))
+
 -- |  The 'Array' type represents syntax for a json array.  It has been given
 -- a singleton constructor 'element' and an instance of 'Monoid',  so that
 -- 'mempty' represents the empty array and 'mappend' concatinates two arrays.
@@ -128,6 +140,17 @@ instance Value Array where
   toJson (Array xs) = case xs of
                         Empty     -> Json (copyByteString "[]")
                         Comma  ys -> Json (fromChar '[' ++ ys ++ fromChar ']')
+
+class JsArray a where
+  toArray  :: a -> Array
+
+instance JsArray Array where
+  toArray = id
+
+-- |  The 'element' function constructs a json array consisting of exactly
+-- one value.  These arrays can be concatinated using 'mappend'.
+element :: Value a => a -> Array
+element a = Array  (Comma (toBuilder a))
 
 -- | A 'CommaMonoid' inserts commas between builders.  In order to
 -- satisify the 'Monoid' identity laws,  'Empty' must be distinguished
@@ -154,18 +177,6 @@ instance Monoid CommaMonoid where
                         Empty   -> mempty
                         Comma b -> fromChar ',' ++ b)
 
-class JsObject a where
-  toObject :: a -> Object
-
-instance JsObject Object where
-  toObject = id
-
-class JsArray a where
-  toArray  :: a -> Array
-
-instance JsArray Array where
-  toArray = id
-
 toBuilder :: Value a => a -> Builder
 toBuilder x = case toJson x of
                 Json y -> y
@@ -178,15 +189,6 @@ toJsonBS  = toByteString     . toBuilder
 toJsonLBS :: Value a => a -> BL.ByteString
 toJsonLBS = toLazyByteString . toBuilder
 
--- |  The 'row' function constructs a json object consisting of exactly
--- one field.  These objects can be concatinated using 'mappend'.
-row :: (JsString k, Value a) => k -> a -> Object
-row   k a = Object (Comma (toBuilder k ++ fromChar ':' ++ toBuilder a))
-
--- |  The 'element' function constructs a json array consisting of exactly
--- one value.  These arrays can be concatinated using 'mappend'.
-element :: Value a => a -> Array
-element a = Array  (Comma (toBuilder a))
 
 -- Primitive instances for json-builder
 
