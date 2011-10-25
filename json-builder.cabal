@@ -28,6 +28,8 @@ Library
   Exposed-modules:     Data.Json.Builder
                        Data.Json.Builder.Internal
 
+  Other-modules:       Data.Json.Builder.Implementation
+
   Build-depends:       base >= 4 && < 5,
                        blaze-builder,
                        blaze-textual,
