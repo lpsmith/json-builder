@@ -111,12 +111,13 @@ instance Value Array where
 -- from @'Comma' 'mempty'@.  To demonstrate the difference:
 --
 -- @
--- mconcat [\"foo\", Comma mempty, \"bar\"]  ==  \"foo,,bar\"
--- mconcat [\"foo\", Empty       , \"bar\"]  ==  \"foo,bar\"
+-- mconcat [\"foo\", \"\"    , \"bar\"]  ==  \"foo,,bar\"
+-- mconcat [\"foo\", Empty , \"bar\"]  ==  \"foo,bar\"
 -- @
 --
--- Note that this example abuses notation somewhat, treating Builders as
--- strings using the injection @'fromString' = Comma . 'Blaze.fromString'@
+-- The strings in this example denote @CommaMonoids@ via
+-- @'fromString' = Comma . 'Blaze.fromString'@.  Thus @\"\"@ is 
+-- equivalent to @Comma mempty@.
 
 data CommaMonoid
    = Empty
