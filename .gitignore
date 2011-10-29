@@ -1,0 +1,10 @@
+.hg/
+_darcs/
+*~
+dist/
+*.prof
+*.hi
+*.o
+\#*\#
+.#*
+json-builder-*.tar.gz
