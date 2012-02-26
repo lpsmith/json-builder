@@ -56,8 +56,8 @@ import           Data.String  ( fromString )
 
 import qualified Data.Text              as T
 import qualified Data.Text.Lazy         as TL
-
 import qualified Data.HashMap.Lazy      as HashMap
+import qualified Data.Vector            as Vector
 
 (++) :: Monoid a => a -> a -> a
 (++) = mappend
@@ -78,7 +78,6 @@ newtype Json = Json Builder
 
 instance Value Json where
   toJson = id
-
 
 -- | The 'Escaped' type represents json string syntax.  The purpose of this
 -- type is so that json strings can be efficiently constructed from multiple
@@ -307,6 +306,13 @@ instance Value a => Value [a] where
 
 instance Value a => JsArray [a] where
   toArray = foldr (\a as -> element a ++ as) mempty
+
+-- | renders as an 'Array'
+instance Value a => Value (Vector.Vector a) where
+  toJson = toJson . toArray
+
+instance Value a => JsArray (Vector.Vector a) where
+  toArray = Vector.foldr (\a as -> element a ++ as) mempty
 
 -- | renders as an 'Object'
 instance (JsString k, Value a) => Value (Map.Map k a) where
