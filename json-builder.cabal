@@ -6,7 +6,7 @@ License-file:        LICENSE
 Author:              Leon P Smith
 Maintainer:          leon@melding-monads.com
 Stability:           experimental
-Copyright:           (c) 2011 Leon P Smith
+Copyright:           (c) 2011-2012 Leon P Smith
 Category:            JSON
 Build-type:          Simple
 Cabal-version:       >= 1.6
