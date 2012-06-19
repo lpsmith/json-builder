@@ -328,6 +328,27 @@ instance (JsString k, Value a) => Value (HashMap.HashMap k a) where
 instance (JsString k, Value a) => JsObject (HashMap.HashMap k a) where
   toObject = HashMap.foldrWithKey (\k a b -> row k a ++ b) mempty
 
+instance (Value a, Value b) => JsArray (a,b) where
+  toArray (a,b) = element a ++ element b
+
+-- | renders as an 'Array'
+instance (Value a, Value b) => Value (a,b) where
+  toJson = toJson . toArray
+
+instance (Value a, Value b, Value c) => JsArray (a,b,c) where
+  toArray (a,b,c) = element a ++ element b ++ element c
+
+-- | renders as an 'Array'
+instance (Value a, Value b, Value c) => Value (a,b,c) where
+  toJson = toJson . toArray
+
+instance (Value a, Value b, Value c, Value d) => JsArray (a,b,c,d) where
+  toArray (a,b,c,d) = element a ++ element b ++ element c ++ element d
+
+-- | renders as an 'Array'
+instance (Value a, Value b, Value c, Value d) => Value (a,b,c,d) where
+  toJson = toJson . toArray
+
 ------------------------------------------------------------------------------
 
 quoteNeeded :: Char -> Bool
