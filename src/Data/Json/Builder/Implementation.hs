@@ -188,12 +188,14 @@ toJsonBS  = toByteString     . toBuilder
 toJsonLBS :: Value a => a -> BL.ByteString
 toJsonLBS = toLazyByteString . toBuilder
 
+-- A primitive to render 
+
+-- | this renders as Json's @null@ value.
+
+jsNull :: Json
+jsNull = Json (copyByteString "null")
 
 -- Primitive instances for json-builder
-
--- | renders as @null@
-instance Value () where
-  toJson _ = Json (copyByteString "null")
 
 instance Value Int     where
   toJson = Json . integral
@@ -330,6 +332,13 @@ instance (JsString k, Value a) => JsObject (HashMap.HashMap k a) where
 
 instance (Value a, Value b) => JsArray (a,b) where
   toArray (a,b) = element a ++ element b
+
+-- | renders as an 'Array'
+instance Value () where
+  toJson = toJson . toArray
+
+instance JsArray () where
+  toArray _ = mempty
 
 -- | renders as an 'Array'
 instance (Value a, Value b) => Value (a,b) where

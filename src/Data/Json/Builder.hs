@@ -17,6 +17,7 @@ module Data.Json.Builder
      , toJsonBS
      , toJsonLBS
      , Value(toJson)
+     , jsNull
        -- * Json Arrays @[\"foobar\",true,42]@
      , Array
      , element
