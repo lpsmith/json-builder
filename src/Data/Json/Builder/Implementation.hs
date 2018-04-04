@@ -43,6 +43,7 @@ import           Blaze.Text (float, double, integral)
 import           Data.Bits ( Bits((.&.), shiftR) )
 import qualified Data.Map               as Map
 import           Data.Monoid ( Monoid (mempty, mappend, mconcat) )
+import           Data.Semigroup ( Semigroup ((<>)) )
 import           Data.Int    ( Int8, Int16, Int32, Int64)
 import           Data.Word   ( Word, Word8, Word16, Word32, Word64 )
 
@@ -88,7 +89,7 @@ instance Value Json where
 -- escaped.   It also must not render the opening or closing quote,  which
 -- are instead rendered by 'toJson'.
 
-newtype Escaped = Escaped Builder deriving (Monoid)
+newtype Escaped = Escaped Builder deriving (Semigroup, Monoid)
 
 instance Value    Escaped where
   toJson (Escaped str) = Json (fromChar '"' ++ str ++ fromChar '"')
@@ -110,7 +111,7 @@ instance JsString Escaped where
 --
 -- Note that duplicate field names will appear in the output, so it is up
 -- to the user of this interface to avoid duplicate field names.
-newtype Object = Object CommaMonoid deriving (Monoid)
+newtype Object = Object CommaMonoid deriving (Semigroup, Monoid)
 
 instance Value Object where
   toJson (Object xs) = case xs of
@@ -133,7 +134,7 @@ row   k a = Object (Comma (toBuilder k ++ fromChar ':' ++ toBuilder a))
 -- 'mempty' represents the empty array and 'mappend' concatinates two arrays.
 -- Arbitrary arrays can be constructed using these operators.
 
-newtype Array = Array CommaMonoid deriving (Monoid)
+newtype Array = Array CommaMonoid deriving (Semigroup, Monoid)
 
 instance Value Array where
   toJson (Array xs) = case xs of
@@ -168,6 +169,11 @@ data CommaMonoid
    = Empty
    | Comma !Builder
 
+instance Semigroup CommaMonoid where
+    Empty <> x = x
+    x <> Empty = x
+    (Comma a) <> (Comma b) = Comma (a <> fromChar ',' <> b)
+
 instance Monoid CommaMonoid where
   mempty = Empty
   mappend Empty     x = x
@@ -188,7 +194,7 @@ toJsonBS  = toByteString     . toBuilder
 toJsonLBS :: Value a => a -> BL.ByteString
 toJsonLBS = toLazyByteString . toBuilder
 
--- A primitive to render 
+-- A primitive to render
 
 -- | this renders as Json's @null@ value.
 
