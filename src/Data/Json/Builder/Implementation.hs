@@ -88,7 +88,7 @@ instance Value Json where
 -- escaped.   It also must not render the opening or closing quote,  which
 -- are instead rendered by 'toJson'.
 
-newtype Escaped = Escaped Builder deriving (Monoid)
+newtype Escaped = Escaped Builder deriving (Semigroup, Monoid)
 
 instance Value    Escaped where
   toJson (Escaped str) = Json (fromChar '"' ++ str ++ fromChar '"')
@@ -110,7 +110,7 @@ instance JsString Escaped where
 --
 -- Note that duplicate field names will appear in the output, so it is up
 -- to the user of this interface to avoid duplicate field names.
-newtype Object = Object CommaMonoid deriving (Monoid)
+newtype Object = Object CommaMonoid deriving (Semigroup, Monoid)
 
 instance Value Object where
   toJson (Object xs) = case xs of
@@ -133,7 +133,7 @@ row   k a = Object (Comma (toBuilder k ++ fromChar ':' ++ toBuilder a))
 -- 'mempty' represents the empty array and 'mappend' concatinates two arrays.
 -- Arbitrary arrays can be constructed using these operators.
 
-newtype Array = Array CommaMonoid deriving (Monoid)
+newtype Array = Array CommaMonoid deriving (Semigroup, Monoid)
 
 instance Value Array where
   toJson (Array xs) = case xs of
@@ -167,6 +167,9 @@ element a = Array  (Comma (toBuilder a))
 data CommaMonoid
    = Empty
    | Comma !Builder
+
+instance Semigroup CommaMonoid where
+  (<>) = mappend
 
 instance Monoid CommaMonoid where
   mempty = Empty
